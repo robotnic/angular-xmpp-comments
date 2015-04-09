@@ -1,0 +1,26 @@
+{
+  "name": "angular-xmpp-services",
+  "authors": [
+    "bernhard zwischenbrgger"
+  ],
+  "version": "0.4.8",
+  "main": [
+    "bin/assets/angular-xmpp-services.js"
+  ],
+  "ignore":[
+        ".*",
+        "./*",
+        "src",
+        "build",
+        "vendor",
+        "npm_modules"
+    ],
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:robotnic/angular-xmpp-services.git"
+  },
+  "dependencies": {
+    "angular-moment":"*",
+    "json-formatter":"*"
+  }
+}

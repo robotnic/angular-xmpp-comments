@@ -1,0 +1,360 @@
+<!doctype html>
+<html ng-app="comment">
+
+<head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="isso.css" />
+    <script type="text/javascript" src="primus.js"></script>
+    <script type="text/javascript" src="bower_components/angular/angular.js"></script>
+    <script type="text/javascript" src="bower_components/angular-xmpp-services/bin/assets/angular-xmpp-services.js"></script>
+    <script src="bower_components/moment/moment.js"></script>
+    <script type="text/javascript" src="bower_components/angular-moment/angular-moment.min.js"></script>
+
+<script>
+SCOPE=null;
+BC=null;
+
+angular.module("comment",['AngularXmpp','angularMoment'])
+.controller("xmppcomments",function(Xmpp,BuddycloudFactory){
+        var node="/user/robotnic@laos.buddycloud.com/posts";
+
+        SCOPE=this;
+        var host="http://localhost:3000";
+
+
+        this.xmpp=new Xmpp(host);
+        var that=this;  //better than $scope?
+        this.xmpp.watch().then(function(data){
+            console.log("end - should never be reached");
+        },function(error){
+            console.log(error);
+        },function(notification){
+            console.log("notification",notification);
+            //$scope.$apply() not needed,empty function fires render process
+            
+        });
+
+        this.loginanonymous=function(jid,password){
+            console.log("login",jid,password);
+            this.xmpp.send('xmpp.login.anonymous',{
+                     "jid": jid,
+                    "resource":"comments"
+            }).then(function(){
+                startit();
+                that.xmpp.send('xmpp.buddycloud.subscribe',{ "node":node });
+                that.anonymous=true;
+            });
+        }
+        this.login=function(jid,password){
+            console.log("login",jid,password);
+            this.xmpp.send('xmpp.login',{
+                     "jid": jid,
+                     "password": password,
+                    "resource":"comments"
+            }).then(function(){
+                startit()
+                that.anonymous=false;
+            });
+        }
+        function startit(){
+                console.log("login ok",that.xmpp);
+                that.buddycloud=new BuddycloudFactory(that.xmpp);
+                that.buddycloud.init().then(function(){
+                    that.buddycloud.open({"node":node});
+                });
+                BC=that.buddycloud;
+
+        }
+//        this.login("elke@laos.buddycloud.com","bbb");  //debug
+        this.loginanonymous("laos.buddycloud.com","bbb");  //debug
+
+})
+
+.filter("gravatar",function(){
+     return function(jid){
+            if(!jid){
+                jid="fehler@teufel.com";
+            }
+            var jidstring='recent';
+            if(typeof(jid)=="string"){
+                if(jid!=='recent'){
+                    var jidstring=trimjidstring(jid);
+                }
+//                var jidstring=jid;
+            }else{
+                var jidstring=jid.user+"@"+jid.domain;
+            }
+            var hash=hashCode(jidstring);
+            var url= "http://www.gravatar.com/avatar/"+hash+"?d=monsterid&f=y";
+            return url;
+    };
+    function hashCode(s){
+      var s= s.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0);
+        s=Math.abs(parseInt(s));
+      return s;
+    }
+
+    function trimjidstring(jid){
+        var user=jid.split("@")[0];
+        var domain=jid.split("@")[1];
+        if(user.indexOf("/")!==-1){
+                user=user.substring(user.lastIndexOf("/")+1);
+        }
+        if(domain.indexOf("/")!==-1){
+                domain=domain.substring(0,domain.indexOf("/"));
+        }
+        return user+"@"+domain;
+    }
+
+}
+
+);
+
+
+</script>
+</head>
+
+<body>
+
+
+    <div style="max-width:650px">
+<!--
+            <article class="post" ng-repeat="item in buddycloud.data.items track by item.id" class="item" ng-if="!item.entry['in-reply-to']">
+                <section class="comment " ng-repeat="subitem in buddycloud.data.items|orderBy:'entry.atom.published' " ng-if="item.id == subitem.entry['in-reply-to'].ref">
+-->
+
+
+        <section id="isso-thread" ng-controller="xmppcomments as comment">
+            <h4>{{comment.buddycloud.data.rsm.count}} Comments</h4>
+            <a ng-href ng-if="comment.anonymous" ng-click="comment.login('bill@laos.buddycloud.com','bbb')">login</a>
+            <a ng-href ng-if="!comment.anonymous" ng-click="comment.logout()">logout</a>
+            <div class="isso-postbox" ng-if="comment.buddycloud.publish">
+                <div class="form-wrapper">
+                    <form  ng-submit="comment.buddycloud.publish(content);content.atom.content=''">
+                    <div class="textarea-wrapper">
+                        <textarea class="textarea" placeholder="Type Comment Here (at least 3 chars)" ng-model="content.atom.content"></textarea>
+                    </div>
+                    <section class="auth-section">
+                        <p class="post-action">
+                            <input value="Submit" type="submit">
+                        </p>
+                    </section>
+                    </form>
+                </div>
+            </div>
+            <div id="isso-root">
+                <div id="isso-1" class="isso-comment" ng-repeat="item in comment.buddycloud.data.items track by item.id" class="item" ng-if="!item.entry['in-reply-to']">
+                        <button class="close"  ng-if="item.remove" ng-click="item.remove()">✖</button>
+                        <div class="avatar" style="background-image:url('{{item.entry.atom.author.name|gravatar}}')" title="{{item.entry.atom.author.name}}"></div>
+                    <div class="text-wrapper">
+                        <div role="meta" class="isso-comment-header"><span class="author">{{item.entry.atom.author.name}}</span><span class="spacer">•</span>
+                            <a href="#isso-1" class="permalink">
+                                <time title="{{item.entry.atom.author.name|date:medium}}"  am-time-ago="item.entry.atom.published"></time>
+                            </a><span class="note"></span>
+                        </div>
+                        <div class="text">
+                            <p>{{item.entry.atom.content.content}}</p>
+                        </div>
+                        <div class="isso-comment-footer">
+
+<div class="avatar" style="background-image:url('{{item.entry.atom.author.name|gravatar}}')" title="{{item.entry.atom.author.name}}"></div>
+                        </div>
+                        <div class="isso-postbox" ng-if="open">
+                            <div class="form-wrapper">
+                                <div class="textarea-wrapper">
+                                    <div class="textarea placeholder" contenteditable="true">Type Comment Here (at least 3 chars)</div>
+                                </div>
+                                <section class="auth-section">
+                                    <p class="post-action">
+                                        <input value="Submit" type="submit">
+                                    </p>
+                                </section>
+                            </div>
+                        </div>
+                        <div class="isso-follow-up" ng-repeat="subitem in comment.buddycloud.data.items|orderBy:'entry.atom.published' " ng-if="item.id == subitem.entry['in-reply-to'].ref">
+                            <div id="isso-2" class="isso-comment">
+                                <button class="close"  ng-if="item.remove" ng-click="subitem.remove()">✖</button>
+                                <div class="avatar" style="background-image:url('{{subitem.entry.atom.author.name|gravatar}}')" title="{{subitem.entry.atom.author.name}}"></div>
+                                <div class="text-wrapper" ng-init="open=false">
+                                    <div role="meta" class="isso-comment-header"><span class="author">{{subitem.entry.atom.author.name}}</span><span class="spacer">•</span>
+                                        <a href="#isso-2" class="permalink">
+                                            <time title="{{subitem.entry.atom.author.name|date:medium}}"  am-time-ago="subitem.entry.atom.published"></time>
+                                        </a><span class="note"></span>
+                                    </div>
+                                    <div class="text">
+                                        <p>{{subitem.entry.atom.content.content}}</p>
+                                    </div>
+<br/>
+                                    <div class="isso-postbox" ng-if="open">
+                                        <div class="form-wrapper">
+                                            <div class="textarea-wrapper">
+                                                <div class="textarea placeholder" contenteditable="true">Type Comment Here (at least 3 chars)</div>
+                                            </div>
+                                            <section class="auth-section">
+                                                <p class="post-action">
+                                                    <input value="Submit" type="submit">
+                                                </p>
+                                            </section>
+                                        </div>
+                                    </div>
+                                    <div class="isso-follow-up"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="isso-follow-up" ng-if="item.reply">
+                            <div id="isso-2" class="isso-comment">
+                                <div class="avatar" style="background-image:url('{{subitem.entry.atom.author.name|gravatar}}')" title="{{subitem.entry.atom.author.name}}"></div>
+                                <div class="text-wrapper" ng-init="open=false">
+                                    <div role="meta" class="isso-comment-header"><span class="author">{{subitem.entry.atom.author.name}}</span>
+                                    </div>
+                                    <div class="text">
+                                        <p>
+                                        <form ng-submit="item.reply(text)">
+                                        <textarea ng-model="text"></textarea><br/>
+                                        <input value="Submit" type="submit">
+                                        </form>
+                                        </p>
+                                    </div>
+                                    
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                    </div>
+                </div>
+
+
+
+
+
+
+                <div id="isso-3" class="isso-comment">
+                    <div class="avatar">
+                        <svg data-hash="1cb6cc0309a2" shape-rendering="crispEdges" preserveAspectRatio="xMinYMin meet" viewBox="0 0 48 48" version="1.1">
+                            <rect style="fill: #f0f0f0" height="56" width="56" y="0" x="0"></rect>
+                            <rect style="fill: #e279a3" height="8" width="8" y="4" x="4"></rect>
+                            <rect style="fill: #e279a3" height="8" width="8" y="4" x="36"></rect>
+                            <rect style="fill: #e279a3" height="8" width="8" y="12" x="4"></rect>
+                            <rect style="fill: #e279a3" height="8" width="8" y="12" x="36"></rect>
+                            <rect style="fill: #e279a3" height="8" width="8" y="12" x="12"></rect>
+                            <rect style="fill: #e279a3" height="8" width="8" y="12" x="28"></rect>
+                            <rect style="fill: #e279a3" height="8" width="8" y="36" x="12"></rect>
+                            <rect style="fill: #e279a3" height="8" width="8" y="36" x="28"></rect>
+                            <rect style="fill: #e279a3" height="8" width="8" y="4" x="20"></rect>
+                            <rect style="fill: #e279a3" height="8" width="8" y="20" x="20"></rect>
+                        </svg>
+                    </div>
+                    <div class="text-wrapper">
+                        <div role="meta" class="isso-comment-header"><span class="author">Anonymous</span><span class="spacer">•</span>
+                            <a href="#isso-3" class="permalink">
+                                <time title="Thu Apr 09 2015 00:01:01 GMT+0200 (CEST)" datetime="2015-03-03T22:01:01Z">15 hours ago</time>
+                            </a><span class="note"></span>
+                        </div>
+                        <div class="text">
+                            <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Accusantium at commodi cum deserunt dolore, error fugiat harum incidunt, ipsa ipsum mollitia nam provident rerum sapiente suscipit tempora vitae? Est, qui?</p>
+                        </div>
+                        <div class="isso-follow-up"></div>
+                    </div>
+                </div>
+                <div id="isso-4" class="isso-comment">
+                    <div class="avatar">
+                        <svg data-hash="d80a40bf80c6" shape-rendering="crispEdges" preserveAspectRatio="xMinYMin meet" viewBox="0 0 48 48" version="1.1">
+                            <rect style="fill: #f0f0f0" height="56" width="56" y="0" x="0"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="4" x="4"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="4" x="36"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="12" x="4"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="12" x="36"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="20" x="4"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="20" x="36"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="4" x="20"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="12" x="20"></rect>
+                        </svg>
+                    </div>
+                    <div class="text-wrapper">
+                        <div role="meta" class="isso-comment-header"><span class="author">Anonymous</span><span class="spacer">•</span>
+                            <a href="#isso-4" class="permalink">
+                                <time title="Thu Apr 09 2015 12:14:57 GMT+0200 (CEST)" datetime="2015-03-04T10:14:57Z">3 hours ago</time>
+                            </a><span class="note"></span>
+                        </div>
+                        <div class="text">
+                            <p>Hello isso</p>
+                        </div>
+                        <div class="isso-comment-footer">
+                            <a href="#" class="upvote">
+                                <!-- Generator: IcoMoon.io -->
+                                <svg width="16" height="16" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="gray">
+                                    <g>
+                                        <path d="M 24.773,18.299c-0.651-0.669-7.512-7.203-7.512-7.203C 16.912,10.739, 16.456,10.56, 16,10.56c-0.458,0-0.914,0.179-1.261,0.536 c0,0-6.861,6.534-7.514,7.203c-0.651,0.669-0.696,1.872,0,2.586c 0.698,0.712, 1.669,0.77, 2.522,0L 16,14.89l 6.251,5.995 c 0.854,0.77, 1.827,0.712, 2.522,0C 25.47,20.17, 25.427,18.966, 24.773,18.299z">
+                                        </path>
+                                    </g>
+                                </svg>
+                            </a><span class="spacer">|</span>
+                            <a href="#" class="downvote">
+                                <!-- Generator: IcoMoon.io -->
+                                <svg width="16" height="16" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="gray">
+                                    <g>
+                                        <path d="M 24.773,13.701c-0.651,0.669-7.512,7.205-7.512,7.205C 16.912,21.262, 16.456,21.44, 16,21.44c-0.458,0-0.914-0.178-1.261-0.534 c0,0-6.861-6.536-7.514-7.205c-0.651-0.669-0.696-1.87,0-2.586c 0.698-0.714, 1.669-0.77, 2.522,0L 16,17.112l 6.251-5.995 c 0.854-0.77, 1.827-0.714, 2.522,0C 25.47,11.83, 25.427,13.034, 24.773,13.701z">
+                                        </path>
+                                    </g>
+                                </svg>
+                            </a><a href="#" class="reply">Reply</a>
+                        </div>
+                        <div class="isso-follow-up"></div>
+                    </div>
+                </div>
+                <div id="isso-5" class="isso-comment">
+                    <div class="avatar">
+                        <svg data-hash="d80a40bf80c6" shape-rendering="crispEdges" preserveAspectRatio="xMinYMin meet" viewBox="0 0 48 48" version="1.1">
+                            <rect style="fill: #f0f0f0" height="56" width="56" y="0" x="0"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="4" x="4"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="4" x="36"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="12" x="4"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="12" x="36"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="20" x="4"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="20" x="36"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="4" x="20"></rect>
+                            <rect style="fill: #e4bf80" height="8" width="8" y="12" x="20"></rect>
+                        </svg>
+                    </div>
+                    <div class="text-wrapper">
+                        <div role="meta" class="isso-comment-header"><span class="author">Anonymous</span><span class="spacer">•</span>
+                            <a href="#isso-5" class="permalink">
+                                <time title="Thu Apr 09 2015 12:15:23 GMT+0200 (CEST)" datetime="2015-03-04T10:15:23Z">3 hours ago</time>
+                            </a><span class="note"></span>
+                        </div>
+                        <div class="text">
+                            <p>test</p>
+                        </div>
+                        <div class="isso-comment-footer">
+                            <a href="#" class="upvote">
+                                <!-- Generator: IcoMoon.io -->
+                                <svg width="16" height="16" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="gray">
+                                    <g>
+                                        <path d="M 24.773,18.299c-0.651-0.669-7.512-7.203-7.512-7.203C 16.912,10.739, 16.456,10.56, 16,10.56c-0.458,0-0.914,0.179-1.261,0.536 c0,0-6.861,6.534-7.514,7.203c-0.651,0.669-0.696,1.872,0,2.586c 0.698,0.712, 1.669,0.77, 2.522,0L 16,14.89l 6.251,5.995 c 0.854,0.77, 1.827,0.712, 2.522,0C 25.47,20.17, 25.427,18.966, 24.773,18.299z">
+                                        </path>
+                                    </g>
+                                </svg>
+                            </a><span class="spacer">|</span>
+                            <a href="#" class="downvote">
+                                <!-- Generator: IcoMoon.io -->
+                                <svg width="16" height="16" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="gray">
+                                    <g>
+                                        <path d="M 24.773,13.701c-0.651,0.669-7.512,7.205-7.512,7.205C 16.912,21.262, 16.456,21.44, 16,21.44c-0.458,0-0.914-0.178-1.261-0.534 c0,0-6.861-6.536-7.514-7.205c-0.651-0.669-0.696-1.87,0-2.586c 0.698-0.714, 1.669-0.77, 2.522,0L 16,17.112l 6.251-5.995 c 0.854-0.77, 1.827-0.714, 2.522,0C 25.47,11.83, 25.427,13.034, 24.773,13.701z">
+                                        </path>
+                                    </g>
+                                </svg>
+                            </a><a href="#" class="reply">Reply</a>
+                        </div>
+                        <div class="isso-follow-up"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+</body>
+
+</html>
