@@ -3,7 +3,7 @@
   "authors": [
     "bernhard zwischenbrgger"
   ],
-  "version": "0.4.8",
+  "version": "0.4.9",
   "main": [
     "bin/assets/angular-xmpp-services.js"
   ],
@@ -24,13 +24,13 @@
     "json-formatter": "*"
   },
   "homepage": "https://github.com/robotnic/angular-xmpp-services",
-  "_release": "0.4.8",
+  "_release": "0.4.9",
   "_resolution": {
     "type": "version",
-    "tag": "v0.4.8",
-    "commit": "59146dd921c9087d5e5ba57eff4893a15900ad07"
+    "tag": "v0.4.9",
+    "commit": "49f1d5b9cbd3b69a8641ff6cef593ed8e4f2aaf2"
   },
   "_source": "git://github.com/robotnic/angular-xmpp-services.git",
-  "_target": "~0.4.8",
+  "_target": "~0.4.9",
   "_originalSource": "angular-xmpp-services"
 }

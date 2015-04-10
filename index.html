@@ -60,7 +60,7 @@ angular.module("comment",['AngularXmpp','angularMoment'])
                 console.log("login ok",that.xmpp);
                 that.buddycloud=new BuddycloudFactory(that.xmpp);
                 that.buddycloud.init().then(function(){
-                    that.buddycloud.open({"node":node});
+                    that.buddycloud.open({"node":node,rsm:{max:20}});
                 });
                 BC=that.buddycloud;
 
@@ -232,6 +232,9 @@ angular.module("comment",['AngularXmpp','angularMoment'])
 
 
             </div>
+            <br/>
+            <br/>
+            <button ng-click="comment.buddycloud.loadmore()">load more</button>
         </section>
 
     </div>
