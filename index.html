@@ -7,149 +7,164 @@
     <script type="text/javascript" src="primus.js"></script>
     <script type="text/javascript" src="bower_components/angular/angular.js"></script>
     <script type="text/javascript" src="bower_components/angular-xmpp-services/bin/assets/angular-xmpp-services.js"></script>
-    <script src="bower_components/moment/moment.js"></script>
+    <script type="text/javascript" src="bower_components/moment/moment.js"></script>
     <script type="text/javascript" src="bower_components/angular-moment/angular-moment.min.js"></script>
 
-<script>
-SCOPE=null;
-BC=null;
+    <script>
+        SCOPE = null;  //debug
+        BC = null;  //debug
 
-angular.module("comment",['AngularXmpp','angularMoment'])
-.controller("xmppcomments",function(Xmpp,BuddycloudFactory){
-        var node="/user/robotnic@laos.buddycloud.com/posts";
+        angular.module("comment", ['AngularXmpp', 'angularMoment'])
+        .controller("xmppcomments", function(Xmpp, BuddycloudFactory) {
+            var nodeid="123123123"
+            var node = "/user/"+nodeid+"@laos.buddycloud.com/posts";
 
-        SCOPE=this;
-        var host="http://localhost:3000";
+            SCOPE = this;
+            var host = "http://localhost:3000";
+            var jid = "elke@laos.buddycloud.com";
+            var password = "bbb";
 
+            this.xmpp = new Xmpp(host);
+            var that = this; 
 
-        this.xmpp=new Xmpp(host);
-        var that=this;  //better than $scope?
-        this.xmpp.watch().then(function(data){
-            console.log("end - should never be reached");
-        },function(error){
-            console.log(error);
-        },function(notification){
-            console.log("notification",notification);
-            //$scope.$apply() not needed,empty function fires render process
-            
-        });
+            //angular promise
+            this.xmpp.watch().then(function(data) {
+                console.log("end - should never be reached");
+            }, function(error) {
+                console.log(error);
+            }, function(notification) {
+                console.log("notification", notification);
+                //$scope.$apply() not needed,empty function fires render process
 
-        this.loginanonymous=function(jid,password){
-            console.log("login",jid,password);
-            this.xmpp.send('xmpp.login.anonymous',{
-                     "jid": jid,
-                    "resource":"comments"
-            }).then(function(){
-                startit();
-                that.xmpp.send('xmpp.buddycloud.subscribe',{ "node":node });
-                that.anonymous=true;
             });
-        }
-        this.login=function(jid,password){
-            console.log("login",jid,password);
-            this.xmpp.send('xmpp.login',{
-                     "jid": jid,
-                     "password": password,
-                    "resource":"comments"
-            }).then(function(){
-                startit()
-                that.anonymous=false;
-            });
-        }
-        function startit(){
-                console.log("login ok",that.xmpp);
-                that.buddycloud=new BuddycloudFactory(that.xmpp);
-                that.buddycloud.init().then(function(){
-                    that.buddycloud.open({"node":node,rsm:{max:20}});
+
+
+            this.loginanonymous = function(jid) {
+                this.xmpp.send('xmpp.login.anonymous', {
+                    "jid": jid,
+                    "resource": "comments"
+                }).then(function() {
+                    startit();
+                    that.xmpp.send('xmpp.buddycloud.subscribe', {
+                        "node": node
+                    });
+                    that.anonymous = true;
                 });
-                BC=that.buddycloud;
-
-        }
-//        this.login("elke@laos.buddycloud.com","bbb");  //debug
-        this.loginanonymous("laos.buddycloud.com","bbb");  //debug
-
-})
-
-.filter("gravatar",function(){
-     return function(jid){
-            if(!jid){
-                jid="fehler@teufel.com";
             }
-            var jidstring='recent';
-            if(typeof(jid)=="string"){
-                if(jid!=='recent'){
-                    var jidstring=trimjidstring(jid);
+            this.login = function() {
+                console.log("login", jid, password);
+                this.xmpp.send('xmpp.login', {
+                    "jid": jid,
+                    "password": password,
+                    "resource": "comments"
+                }).then(function() {
+                    startit()
+                    that.anonymous = false;
+                });
+            }
+
+            function startit() {
+                console.log("login ok", that.xmpp);
+                that.buddycloud = new BuddycloudFactory(that.xmpp);
+                that.buddycloud.init().then(function() {
+                    that.buddycloud.open({
+                        "node": node,
+                        rsm: {
+                            max: 20
+                        }
+                    });
+                });
+                BC = that.buddycloud;
+
+            }
+            //        this.login("elke@laos.buddycloud.com","bbb");  //debug
+            this.loginanonymous("laos.buddycloud.com"); //debug
+
+        })
+
+
+
+        //rest is for avatar icon
+        .filter("gravatar", function() {
+                return function(jid) {
+                    if (!jid) {
+                        jid = "fehler@teufel.com";
+                    }
+                    var jidstring = 'recent';
+                    if (typeof(jid) == "string") {
+                        if (jid !== 'recent') {
+                            var jidstring = trimjidstring(jid);
+                        }
+                    } else {
+                        var jidstring = jid.user + "@" + jid.domain;
+                    }
+                    var hash = hashCode(jidstring);
+                    var url = "http://www.gravatar.com/avatar/" + hash + "?d=monsterid&f=y";
+                    return url;
+                };
+
+                function hashCode(s) {
+                    var s = s.split("").reduce(function(a, b) {
+                        a = ((a << 5) - a) + b.charCodeAt(0);
+                        return a & a
+                    }, 0);
+                    s = Math.abs(parseInt(s));
+                    return s;
                 }
-//                var jidstring=jid;
-            }else{
-                var jidstring=jid.user+"@"+jid.domain;
+
+                function trimjidstring(jid) {
+                    var user = jid.split("@")[0];
+                    var domain = jid.split("@")[1];
+                    if (user.indexOf("/") !== -1) {
+                        user = user.substring(user.lastIndexOf("/") + 1);
+                    }
+                    if (domain.indexOf("/") !== -1) {
+                        domain = domain.substring(0, domain.indexOf("/"));
+                    }
+                    return user + "@" + domain;
+                }
+
             }
-            var hash=hashCode(jidstring);
-            var url= "http://www.gravatar.com/avatar/"+hash+"?d=monsterid&f=y";
-            return url;
-    };
-    function hashCode(s){
-      var s= s.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0);
-        s=Math.abs(parseInt(s));
-      return s;
-    }
 
-    function trimjidstring(jid){
-        var user=jid.split("@")[0];
-        var domain=jid.split("@")[1];
-        if(user.indexOf("/")!==-1){
-                user=user.substring(user.lastIndexOf("/")+1);
-        }
-        if(domain.indexOf("/")!==-1){
-                domain=domain.substring(0,domain.indexOf("/"));
-        }
-        return user+"@"+domain;
-    }
-
-}
-
-);
-
-
-</script>
+        );
+    </script>
 </head>
 
 <body>
 
 
     <div style="max-width:650px">
-<!--
-            <article class="post" ng-repeat="item in buddycloud.data.items track by item.id" class="item" ng-if="!item.entry['in-reply-to']">
-                <section class="comment " ng-repeat="subitem in buddycloud.data.items|orderBy:'entry.atom.published' " ng-if="item.id == subitem.entry['in-reply-to'].ref">
--->
-
 
         <section id="isso-thread" ng-controller="xmppcomments as comment">
             <h4>{{comment.buddycloud.data.rsm.count}} Comments</h4>
-            <a ng-href ng-if="comment.anonymous" ng-click="comment.login('bill@laos.buddycloud.com','bbb')">login</a>
-            <a ng-href ng-if="!comment.anonymous" ng-click="comment.logout()">logout</a>
+            <div class="actionlinks">
+            <a ng-href ng-if="comment.anonymous" ng-click="comment.login()">login</a>
+            <a ng-href ng-if="!comment.anonymous && comment.buddycloud.subscribe" ng-click="comment.buddycloud.subscribe()">subscribe</a>
+            <a ng-href ng-if="!comment.anonymous && comment.buddycloud.unsubscribe" ng-click="comment.buddycloud.unsubscribe()">unsubscribe</a>
+            <a ng-href ng-if="!comment.anonymous" ng-click="comment.buddycloud.logout()">logout</a>
+            </div>
             <div class="isso-postbox" ng-if="comment.buddycloud.publish">
                 <div class="form-wrapper">
-                    <form  ng-submit="comment.buddycloud.publish(content);content.atom.content=''">
-                    <div class="textarea-wrapper">
-                        <textarea class="textarea" placeholder="Type Comment Here (at least 3 chars)" ng-model="content.atom.content"></textarea>
-                    </div>
-                    <section class="auth-section">
-                        <p class="post-action">
-                            <input value="Submit" type="submit">
-                        </p>
-                    </section>
+                    <form ng-submit="comment.buddycloud.publish(content);content.atom.content=''">
+                        <div class="textarea-wrapper">
+                            <textarea class="textarea" placeholder="Type Comment Here (at least 3 chars)" ng-model="content.atom.content"></textarea>
+                        </div>
+                        <section class="auth-section">
+                            <p class="post-action">
+                                <input value="Submit" type="submit">
+                            </p>
+                        </section>
                     </form>
                 </div>
             </div>
             <div id="isso-root">
-                <div id="isso-1" class="isso-comment" ng-repeat="item in comment.buddycloud.data.items track by item.id" class="item" ng-if="!item.entry['in-reply-to']">
-                        <button class="close"  ng-if="item.remove" ng-click="item.remove()">✖</button>
-                        <div class="avatar" style="background-image:url('{{item.entry.atom.author.name|gravatar}}')" title="{{item.entry.atom.author.name}}"></div>
+                <div id="isso-1" class="isso-comment" ng-repeat="item in comment.buddycloud.data.tree track by item.id" class="item">
+                    <button class="close" ng-if="item.remove" ng-click="item.remove()">✖</button>
+                    <div class="avatar" style="background-image:url('{{item.entry.atom.author.name|gravatar}}')" title="{{item.entry.atom.author.name}}"></div>
                     <div class="text-wrapper">
                         <div role="meta" class="isso-comment-header"><span class="author">{{item.entry.atom.author.name}}</span><span class="spacer">•</span>
                             <a href="#isso-1" class="permalink">
-                                <time title="{{item.entry.atom.author.name|date:medium}}"  am-time-ago="item.entry.atom.published"></time>
+                                <time title="{{item.entry.atom.author.name|date:medium}}" am-time-ago="item.entry.atom.published"></time>
                             </a><span class="note"></span>
                         </div>
                         <div class="text">
@@ -157,7 +172,7 @@ angular.module("comment",['AngularXmpp','angularMoment'])
                         </div>
                         <div class="isso-comment-footer">
 
-<div class="avatar" style="background-image:url('{{item.entry.atom.author.name|gravatar}}')" title="{{item.entry.atom.author.name}}"></div>
+                            <div class="avatar" style="background-image:url('{{item.entry.atom.author.name|gravatar}}')" title="{{item.entry.atom.author.name}}"></div>
                         </div>
                         <div class="isso-postbox" ng-if="open">
                             <div class="form-wrapper">
@@ -171,20 +186,20 @@ angular.module("comment",['AngularXmpp','angularMoment'])
                                 </section>
                             </div>
                         </div>
-                        <div class="isso-follow-up" ng-repeat="subitem in comment.buddycloud.data.items|orderBy:'entry.atom.published' " ng-if="item.id == subitem.entry['in-reply-to'].ref">
+                        <div class="isso-follow-up" ng-repeat="subitem in item.children track by $index|orderBy:'entry.atom.published' ">
                             <div id="isso-2" class="isso-comment">
-                                <button class="close"  ng-if="item.remove" ng-click="subitem.remove()">✖</button>
+                                <button class="close" ng-if="item.remove" ng-click="subitem.remove()">✖</button>
                                 <div class="avatar" style="background-image:url('{{subitem.entry.atom.author.name|gravatar}}')" title="{{subitem.entry.atom.author.name}}"></div>
                                 <div class="text-wrapper" ng-init="open=false">
                                     <div role="meta" class="isso-comment-header"><span class="author">{{subitem.entry.atom.author.name}}</span><span class="spacer">•</span>
                                         <a href="#isso-2" class="permalink">
-                                            <time title="{{subitem.entry.atom.author.name|date:medium}}"  am-time-ago="subitem.entry.atom.published"></time>
+                                            <time title="{{subitem.entry.atom.author.name|date:medium}}" am-time-ago="subitem.entry.atom.published"></time>
                                         </a><span class="note"></span>
                                     </div>
                                     <div class="text">
                                         <p>{{subitem.entry.atom.content.content}}</p>
                                     </div>
-<br/>
+                                    <br/>
                                     <div class="isso-postbox" ng-if="open">
                                         <div class="form-wrapper">
                                             <div class="textarea-wrapper">
@@ -210,13 +225,14 @@ angular.module("comment",['AngularXmpp','angularMoment'])
                                     </div>
                                     <div class="text">
                                         <p>
-                                        <form ng-submit="item.reply(text)">
-                                        <textarea ng-model="text"></textarea><br/>
-                                        <input value="Submit" type="submit">
-                                        </form>
+                                            <form ng-submit="item.reply(text)">
+                                                <textarea ng-model="text"></textarea>
+                                                <br/>
+                                                <input value="Submit" type="submit">
+                                            </form>
                                         </p>
                                     </div>
-                                    
+
                                 </div>
                             </div>
                         </div>

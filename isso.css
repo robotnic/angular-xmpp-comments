@@ -5,7 +5,7 @@
     box-sizing: border-box;
 
 }
-#isso-thread >a {
+#isso-thread .actionlinks {
   position: absolute;
   top: 0px;
   right: 0px;
